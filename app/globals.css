@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(248, 200, 76, 0.26), transparent 28rem),
+    radial-gradient(circle at 82% 18%, rgba(255, 248, 223, 0.24), transparent 25rem),
+    linear-gradient(135deg, #03442d 0%, #07734e 42%, #0d9a68 100%);
+  color: #fff8df;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 22px 70px rgba(5, 32, 24, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.eid-pattern {
+  background-image:
+    linear-gradient(30deg, rgba(255, 255, 255, 0.06) 12%, transparent 12.5%, transparent 87%, rgba(255, 255, 255, 0.06) 87.5%, rgba(255, 255, 255, 0.06)),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.06) 12%, transparent 12.5%, transparent 87%, rgba(255, 255, 255, 0.06) 87.5%, rgba(255, 255, 255, 0.06));
+  background-size: 42px 72px;
+}
+
+.wheel-surface {
+  background: conic-gradient(
+    from -30deg,
+    #f8c84c 0deg 60deg,
+    #0f8a5f 60deg 120deg,
+    #fff8df 120deg 180deg,
+    #d4483f 180deg 240deg,
+    #31b184 240deg 300deg,
+    #f5a623 300deg 360deg
+  );
+}
+
+.confetti-piece {
+  position: fixed;
+  top: -20px;
+  width: 10px;
+  height: 16px;
+  border-radius: 2px;
+  animation: confetti-fall 2.8s linear forwards;
+  z-index: 50;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(700deg);
+    opacity: 0;
+  }
+}
