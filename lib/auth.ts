@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { connectDB } from "@/lib/db";
@@ -55,6 +56,72 @@ export function setAdminCookie(token: string) {
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 7,
     path: "/"
+  });
+}
+
+export function buildGoogleUsername(email: string) {
+  return email
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 28);
+}
+
+export async function findOrCreateGoogleAdmin({
+  name,
+  email,
+  googleId,
+  image
+}: {
+  name: string;
+  email: string;
+  googleId: string;
+  image?: string;
+}) {
+  await connectDB();
+
+  const cleanEmail = email.trim().toLowerCase();
+  const allowedEmails = (process.env.ADMIN_GOOGLE_EMAILS || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (allowedEmails.length && !allowedEmails.includes(cleanEmail)) {
+    throw new Error("This Google email is not allowed as an admin.");
+  }
+
+  const existingAdmin = await Admin.findOne({
+    $or: [{ email: cleanEmail }, { googleId }]
+  });
+
+  if (existingAdmin) {
+    existingAdmin.name = existingAdmin.name || name || "Google Admin";
+    existingAdmin.email = existingAdmin.email || cleanEmail;
+    existingAdmin.googleId = existingAdmin.googleId || googleId;
+    existingAdmin.authProvider = existingAdmin.authProvider || "google";
+    existingAdmin.profileImageUrl = existingAdmin.profileImageUrl || image || "";
+    await existingAdmin.save();
+    return existingAdmin;
+  }
+
+  const passwordHash = await bcrypt.hash(crypto.randomUUID(), 12);
+  const baseUsername = buildGoogleUsername(cleanEmail) || "googleadmin";
+  let username = baseUsername;
+  let suffix = 1;
+
+  while (await Admin.findOne({ username })) {
+    username = `${baseUsername}${suffix}`;
+    suffix += 1;
+  }
+
+  return Admin.create({
+    name: name || "Google Admin",
+    username,
+    email: cleanEmail,
+    googleId,
+    authProvider: "google",
+    profileImageUrl: image || "",
+    passwordHash
   });
 }
 

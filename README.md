@@ -37,6 +37,11 @@ Add these variables in **Vercel Project Settings > Environment Variables** befor
 MONGODB_URI=your-mongodb-atlas-connection-string
 JWT_SECRET=use-a-long-random-secret
 ADMIN_PASSWORD=your-owner-setup-password
+NEXTAUTH_URL=https://your-vercel-domain.vercel.app
+NEXTAUTH_SECRET=use-another-long-random-secret
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+ADMIN_GOOGLE_EMAILS=yourgmail@gmail.com
 ```
 
 For Vercel, use a MongoDB Atlas URI, not `mongodb://127.0.0.1:27017/...`.
@@ -48,6 +53,14 @@ MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@cluster0.xxxxx.mongodb.net/eid-salam
 ```
 
 If your variable is already named `MONGO_URI` or `DATABASE_URL`, the app also supports those aliases.
+
+For Google login, create an OAuth client in Google Cloud Console and add this Authorized redirect URI:
+
+```text
+https://your-vercel-domain.vercel.app/api/auth/callback/google
+```
+
+`ADMIN_GOOGLE_EMAILS` is optional, but recommended. Put your Gmail there so only your Google account can become an admin.
 
 ## Folder Structure
 

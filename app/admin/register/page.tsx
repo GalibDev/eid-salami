@@ -70,7 +70,20 @@ export default function RegisterPage() {
           Use the setup password from <span className="font-bold text-white">ADMIN_PASSWORD</span> to create another admin.
         </p>
 
-        <form onSubmit={register} className="mt-6 space-y-4">
+        <a
+          href="/api/auth/signin/google?callbackUrl=/api/admin/google-login"
+          className="mt-6 flex w-full items-center justify-center rounded-xl bg-white px-5 py-3 font-black text-eid-ink shadow-glow transition hover:scale-[1.01]"
+        >
+          Register / login with Google
+        </a>
+
+        <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-white/55">
+          <span className="h-px flex-1 bg-white/20" />
+          or
+          <span className="h-px flex-1 bg-white/20" />
+        </div>
+
+        <form onSubmit={register} className="space-y-4">
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}

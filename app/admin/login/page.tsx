@@ -43,7 +43,20 @@ export default function LoginPage() {
           Login with your registered admin username and password.
         </p>
 
-        <form onSubmit={login} className="mt-6 space-y-4">
+        <a
+          href="/api/auth/signin/google?callbackUrl=/api/admin/google-login"
+          className="mt-6 flex w-full items-center justify-center rounded-xl bg-white px-5 py-3 font-black text-eid-ink shadow-glow transition hover:scale-[1.01]"
+        >
+          Continue with Google
+        </a>
+
+        <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-white/55">
+          <span className="h-px flex-1 bg-white/20" />
+          or
+          <span className="h-px flex-1 bg-white/20" />
+        </div>
+
+        <form onSubmit={login} className="space-y-4">
           <input
             type="text"
             value={username}
