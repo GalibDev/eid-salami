@@ -37,6 +37,8 @@ export default function DashboardPage() {
   const [profileName, setProfileName] = useState("");
   const [profileUsername, setProfileUsername] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profilePreviewUrl, setProfilePreviewUrl] = useState("");
   const [profilePassword, setProfilePassword] = useState("");
   const [prizeText, setPrizeText] = useState("1, 2, 5, 10, 15, 20");
   const [count, setCount] = useState(10);
@@ -94,13 +96,33 @@ export default function DashboardPage() {
   }, []);
 
   async function saveProfile() {
+    let nextProfileImageUrl = profileImageUrl;
+
+    if (profileImage) {
+      const imageForm = new FormData();
+      imageForm.append("image", profileImage);
+
+      const uploadResponse = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: imageForm
+      });
+      const uploadData = (await uploadResponse.json()) as { ok: boolean; url?: string; message?: string };
+
+      if (!uploadResponse.ok || !uploadData.ok || !uploadData.url) {
+        setMessage(uploadData.message || "Profile image upload failed.");
+        return;
+      }
+
+      nextProfileImageUrl = uploadData.url;
+    }
+
     const response = await fetch("/api/admin/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: profileName,
         username: profileUsername,
-        profileImageUrl,
+        profileImageUrl: nextProfileImageUrl,
         password: profilePassword
       })
     });
@@ -108,6 +130,9 @@ export default function DashboardPage() {
 
     if (data.ok && data.admin) {
       setProfile(data.admin);
+      setProfileImageUrl(data.admin.profileImageUrl || "");
+      setProfileImage(null);
+      setProfilePreviewUrl("");
       setProfilePassword("");
       setMessage("Admin profile updated.");
     } else {
@@ -204,7 +229,7 @@ export default function DashboardPage() {
           <div className="space-y-6">
             <div className="glass rounded-2xl p-5">
               <div className="flex items-center gap-4">
-                <ProfileAvatar profile={profile} large />
+                <ProfileAvatar profile={profile} previewUrl={profilePreviewUrl} large />
                 <div>
                   <h2 className="text-xl font-black text-white">Admin Profile</h2>
                   <p className="mt-1 text-sm text-white/70">Update owner name, username, image and password.</p>
@@ -224,10 +249,14 @@ export default function DashboardPage() {
                   className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
                 />
                 <input
-                  value={profileImageUrl}
-                  onChange={(event) => setProfileImageUrl(event.target.value)}
-                  placeholder="Profile picture URL"
-                  className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] || null;
+                    setProfileImage(file);
+                    setProfilePreviewUrl(file ? URL.createObjectURL(file) : "");
+                  }}
+                  className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 file:mr-4 file:rounded-lg file:border-0 file:bg-eid-gold file:px-3 file:py-2 file:font-black file:text-eid-ink focus:ring-4"
                 />
                 <input
                   type="password"
@@ -340,7 +369,15 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ProfileAvatar({ profile, large = false }: { profile: AdminProfile | null; large?: boolean }) {
+function ProfileAvatar({
+  profile,
+  previewUrl = "",
+  large = false
+}: {
+  profile: AdminProfile | null;
+  previewUrl?: string;
+  large?: boolean;
+}) {
   const size = large ? "h-16 w-16 text-xl" : "h-11 w-11 text-base";
   const initials =
     profile?.name
@@ -350,11 +387,13 @@ function ProfileAvatar({ profile, large = false }: { profile: AdminProfile | nul
       .slice(0, 2)
       .toUpperCase() || "AD";
 
-  if (profile?.profileImageUrl) {
+  const imageUrl = previewUrl || profile?.profileImageUrl;
+
+  if (imageUrl) {
     return (
       <img
-        src={profile.profileImageUrl}
-        alt={profile.name}
+        src={imageUrl}
+        alt={profile?.name || "Admin"}
         className={`${size} rounded-full border-2 border-eid-gold object-cover`}
       />
     );

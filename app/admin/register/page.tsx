@@ -10,7 +10,8 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [setupPassword, setSetupPassword] = useState("");
-  const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,10 +20,32 @@ export default function RegisterPage() {
     setLoading(true);
     setMessage("");
 
+    let uploadedProfileImageUrl = "";
+
+    if (profileImage) {
+      const imageForm = new FormData();
+      imageForm.append("image", profileImage);
+      imageForm.append("setupPassword", setupPassword);
+
+      const uploadResponse = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: imageForm
+      });
+      const uploadData = (await uploadResponse.json()) as { ok: boolean; url?: string; message?: string };
+
+      if (!uploadResponse.ok || !uploadData.ok || !uploadData.url) {
+        setMessage(uploadData.message || "Profile image upload failed.");
+        setLoading(false);
+        return;
+      }
+
+      uploadedProfileImageUrl = uploadData.url;
+    }
+
     const response = await fetch("/api/admin/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, username, password, setupPassword, profileImageUrl })
+      body: JSON.stringify({ name, username, password, setupPassword, profileImageUrl: uploadedProfileImageUrl })
     });
     const data = (await response.json()) as { ok: boolean; message?: string };
 
@@ -68,11 +91,22 @@ export default function RegisterPage() {
             className="w-full rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-semibold text-eid-ink outline-none ring-eid-gold/50 transition focus:ring-4"
           />
           <input
-            value={profileImageUrl}
-            onChange={(event) => setProfileImageUrl(event.target.value)}
-            placeholder="Profile picture URL"
-            className="w-full rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-semibold text-eid-ink outline-none ring-eid-gold/50 transition focus:ring-4"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={(event) => {
+              const file = event.target.files?.[0] || null;
+              setProfileImage(file);
+              setPreviewUrl(file ? URL.createObjectURL(file) : "");
+            }}
+            className="w-full rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-semibold text-eid-ink outline-none ring-eid-gold/50 transition file:mr-4 file:rounded-lg file:border-0 file:bg-eid-gold file:px-3 file:py-2 file:font-black file:text-eid-ink focus:ring-4"
           />
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Profile preview"
+              className="h-24 w-24 rounded-full border-2 border-eid-gold object-cover"
+            />
+          ) : null}
           <input
             type="password"
             value={setupPassword}
