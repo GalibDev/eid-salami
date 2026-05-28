@@ -6,8 +6,9 @@ import Code from "@/models/Code";
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    const { code } = (await request.json()) as { code?: string };
+    const { code, redeemerName } = (await request.json()) as { code?: string; redeemerName?: string };
     const cleanCode = code?.trim().toUpperCase();
+    const cleanName = redeemerName?.trim().slice(0, 80) || "";
 
     if (!cleanCode) {
       return NextResponse.json({ ok: false, message: "Code is required." }, { status: 400 });
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     const updatedCode = await Code.findOneAndUpdate(
       { code: cleanCode, isUsed: false },
-      { $set: { isUsed: true, prizeWon: prize, usedAt: new Date() } },
+      { $set: { isUsed: true, prizeWon: prize, redeemerName: cleanName, usedAt: new Date() } },
       { new: true }
     ).lean();
 

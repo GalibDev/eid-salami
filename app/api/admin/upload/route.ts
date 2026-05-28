@@ -1,5 +1,3 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 
@@ -29,16 +27,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: "Image must be 2MB or smaller." }, { status: 400 });
     }
 
-    const extension = file.type.split("/")[1] === "jpeg" ? "jpg" : file.type.split("/")[1];
-    const filename = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "admin");
-    const uploadPath = path.join(uploadDir, filename);
     const bytes = await file.arrayBuffer();
+    const base64 = Buffer.from(bytes).toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(uploadPath, Buffer.from(bytes));
-
-    return NextResponse.json({ ok: true, url: `/uploads/admin/${filename}` });
+    return NextResponse.json({ ok: true, url: dataUrl });
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: error instanceof Error ? error.message : "Image upload failed." },

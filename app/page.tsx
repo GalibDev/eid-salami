@@ -12,6 +12,8 @@ type ValidateResponse = {
 
 export default function HomePage() {
   const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [redeemerName, setRedeemerName] = useState("");
   const [validatedCode, setValidatedCode] = useState("");
   const [prizes, setPrizes] = useState<number[]>([1, 2, 5, 10, 15, 20]);
   const [message, setMessage] = useState("");
@@ -41,6 +43,7 @@ export default function HomePage() {
       setMessage(data.message || "This code is invalid or already used.");
     } else {
       setPrizes(data.prizes?.length ? data.prizes : [1, 2, 5, 10, 15, 20]);
+      setRedeemerName(name.trim());
       setValidatedCode(cleanCode);
       setMessage("Your code is ready. Tap the wheel button once.");
     }
@@ -79,7 +82,16 @@ export default function HomePage() {
             <label htmlFor="code" className="mb-2 block text-sm font-semibold text-white/85">
               Redeem code
             </label>
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <div className="grid gap-3">
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Your name, optional"
+                className="w-full rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-base font-bold text-eid-ink outline-none ring-eid-gold/50 transition placeholder:text-eid-ink/35 focus:ring-4"
+                autoComplete="name"
+              />
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
               <input
                 id="code"
                 value={code}
@@ -101,7 +113,7 @@ export default function HomePage() {
         </div>
 
         <div className="flex justify-center lg:justify-end">
-          <SpinWheel code={validatedCode} prizes={prizes} />
+          <SpinWheel code={validatedCode} redeemerName={redeemerName} prizes={prizes} />
         </div>
       </section>
     </main>

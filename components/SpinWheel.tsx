@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type SpinWheelProps = {
   code: string;
+  redeemerName: string;
   prizes: number[];
 };
 
@@ -13,14 +14,29 @@ type SpinResponse = {
   message?: string;
 };
 
+type ClaimResponse = {
+  ok: boolean;
+  message?: string;
+};
+
 const colors = ["#f8c84c", "#0f8a5f", "#fff8df", "#d4483f", "#31b184", "#f5a623"];
 
-export default function SpinWheel({ code, prizes }: SpinWheelProps) {
+export default function SpinWheel({ code, redeemerName, prizes }: SpinWheelProps) {
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [claimPhone, setClaimPhone] = useState("");
+  const [claimSaved, setClaimSaved] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+
+  useEffect(() => {
+    setResult(null);
+    setMessage("");
+    setClaimPhone("");
+    setClaimSaved(false);
+    setShowConfetti(false);
+  }, [code]);
 
   const wheelBackground = useMemo(() => {
     const segment = 360 / prizes.length;
@@ -39,7 +55,7 @@ export default function SpinWheel({ code, prizes }: SpinWheelProps) {
     const response = await fetch("/api/spin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({ code, redeemerName })
     });
     const data = (await response.json()) as SpinResponse;
 
@@ -63,6 +79,26 @@ export default function SpinWheel({ code, prizes }: SpinWheelProps) {
       setShowConfetti(true);
       setSpinning(false);
     }, 4300);
+  }
+
+  async function saveClaim(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+
+    const response = await fetch("/api/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, claimPhone })
+    });
+    const data = (await response.json()) as ClaimResponse;
+
+    if (!response.ok || !data.ok) {
+      setMessage(data.message || "Could not save your bKash number.");
+      return;
+    }
+
+    setClaimSaved(true);
+    setMessage(claimPhone.trim() ? "Your bKash number was saved for claim." : "Claim number skipped.");
   }
 
   return (
@@ -112,6 +148,23 @@ export default function SpinWheel({ code, prizes }: SpinWheelProps) {
       {result !== null ? (
         <div className="mt-5 rounded-2xl bg-eid-gold px-4 py-4 text-eid-ink">
           <p className="text-xl font-black">Congratulations! You got {result}৳ Eid Salami</p>
+          <form onSubmit={saveClaim} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <input
+              value={claimPhone}
+              onChange={(event) => setClaimPhone(event.target.value)}
+              placeholder="bKash number, optional"
+              disabled={claimSaved}
+              className="rounded-xl border border-eid-ink/15 bg-white px-4 py-3 text-sm font-bold text-eid-ink outline-none ring-eid-emerald/30 placeholder:text-eid-ink/40 focus:ring-4 disabled:opacity-70"
+              inputMode="tel"
+            />
+            <button
+              type="submit"
+              disabled={claimSaved}
+              className="rounded-xl bg-eid-emerald px-5 py-3 text-sm font-black text-white disabled:opacity-70"
+            >
+              {claimSaved ? "Saved" : "Save Claim"}
+            </button>
+          </form>
         </div>
       ) : (
         <p className="mt-4 min-h-6 text-sm font-semibold text-white/75">

@@ -3,8 +3,6 @@ node_modules
 .env.local
 *.log
 *-check.png
-public/uploads/admin/*
-!public/uploads/admin/.gitkeep
 dist
 coverage
 npm-debug.log*

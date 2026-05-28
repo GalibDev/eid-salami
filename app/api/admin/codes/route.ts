@@ -27,6 +27,9 @@ export async function GET() {
       code: item.code,
       isUsed: item.isUsed,
       prizeWon: item.prizeWon,
+      redeemerName: item.redeemerName || "",
+      claimPhone: item.claimPhone || "",
+      claimedAt: item.claimedAt,
       usedAt: item.usedAt,
       createdAt: item.createdAt
     }))

@@ -9,6 +9,9 @@ type CodeRow = {
   code: string;
   isUsed: boolean;
   prizeWon: number | null;
+  redeemerName: string;
+  claimPhone: string;
+  claimedAt: string | null;
   usedAt: string | null;
   createdAt: string;
 };
@@ -413,12 +416,14 @@ function CodesTable({ codes, onDelete }: { codes: CodeRow[]; onDelete: (code: st
 
   return (
     <div className="max-h-[620px] overflow-auto">
-      <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+      <table className="w-full min-w-[920px] border-collapse text-left text-sm">
         <thead className="sticky top-0 bg-eid-emerald text-eid-gold">
           <tr>
             <th className="px-4 py-3">Code</th>
             <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">Name</th>
             <th className="px-4 py-3">Prize won</th>
+            <th className="px-4 py-3">bKash number</th>
             <th className="px-4 py-3">Used time</th>
             <th className="px-4 py-3">Action</th>
           </tr>
@@ -432,6 +437,7 @@ function CodesTable({ codes, onDelete }: { codes: CodeRow[]; onDelete: (code: st
                   {item.isUsed ? `Used${item.prizeWon ? ` - won ${item.prizeWon}৳` : ""}` : "Unused"}
                 </span>
               </td>
+              <td className="px-4 py-3">{item.redeemerName || "-"}</td>
               <td className="px-4 py-3">
                 {item.prizeWon ? (
                   <span className="rounded-full bg-eid-gold px-3 py-1 font-black text-eid-ink">{item.prizeWon}৳</span>
@@ -439,6 +445,7 @@ function CodesTable({ codes, onDelete }: { codes: CodeRow[]; onDelete: (code: st
                   "-"
                 )}
               </td>
+              <td className="px-4 py-3">{item.claimPhone || "-"}</td>
               <td className="px-4 py-3">{item.usedAt ? new Date(item.usedAt).toLocaleString() : "-"}</td>
               <td className="px-4 py-3">
                 <button
