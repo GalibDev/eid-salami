@@ -3,13 +3,13 @@ import { signAdminToken, setAdminCookie, verifyAdminPassword } from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
   try {
-    const { password } = (await request.json()) as { password?: string };
+    const { password, username } = (await request.json()) as { password?: string; username?: string };
 
     if (!password) {
       return NextResponse.json({ ok: false, message: "Password is required." }, { status: 400 });
     }
 
-    const admin = await verifyAdminPassword(password);
+    const admin = await verifyAdminPassword(password, username || "owner");
     if (!admin) {
       return NextResponse.json({ ok: false, message: "Wrong owner password." }, { status: 401 });
     }

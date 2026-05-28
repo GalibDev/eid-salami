@@ -20,17 +20,26 @@ export async function ensureAdmin() {
   if (!envPassword) throw new Error("ADMIN_PASSWORD is missing. Add it to .env.local.");
 
   const admin = await Admin.findOne({ username });
-  if (admin) return admin;
+  if (admin) {
+    if (!admin.name) {
+      admin.name = "Owner";
+      await admin.save();
+    }
+    return admin;
+  }
 
   const passwordHash = await bcrypt.hash(envPassword, 12);
-  return Admin.create({ username, passwordHash });
+  return Admin.create({ name: "Owner", username, passwordHash });
 }
 
-export async function verifyAdminPassword(password: string) {
-  const admin = await ensureAdmin();
+export async function verifyAdminPassword(password: string, username = "owner") {
+  await ensureAdmin();
   const envPassword = process.env.ADMIN_PASSWORD;
+  const admin = await Admin.findOne({ username: username.trim().toLowerCase() });
 
-  if (envPassword && password === envPassword) return admin;
+  if (!admin) return null;
+
+  if (admin.username === "owner" && envPassword && password === envPassword) return admin;
   const matchesStoredPassword = await bcrypt.compare(password, admin.passwordHash);
   return matchesStoredPassword ? admin : null;
 }
@@ -62,4 +71,12 @@ export function requireAdmin() {
   } catch {
     return null;
   }
+}
+
+export async function getCurrentAdmin() {
+  const payload = requireAdmin();
+  if (!payload) return null;
+
+  await connectDB();
+  return Admin.findById(payload.adminId);
 }

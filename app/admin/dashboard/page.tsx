@@ -24,8 +24,20 @@ type CodesResponse = {
   codes?: CodeRow[];
 };
 
+type AdminProfile = {
+  id: string;
+  name: string;
+  username: string;
+  profileImageUrl: string;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [profileUsername, setProfileUsername] = useState("");
+  const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [profilePassword, setProfilePassword] = useState("");
   const [prizeText, setPrizeText] = useState("1, 2, 5, 10, 15, 20");
   const [count, setCount] = useState(10);
   const [codes, setCodes] = useState<CodeRow[]>([]);
@@ -40,18 +52,27 @@ export default function DashboardPage() {
     setLoading(true);
     setMessage("");
 
-    const [prizeResponse, codeResponse] = await Promise.all([
+    const [profileResponse, prizeResponse, codeResponse] = await Promise.all([
+      fetch("/api/admin/profile"),
       fetch("/api/admin/prizes"),
       fetch("/api/admin/codes")
     ]);
 
-    if (prizeResponse.status === 401 || codeResponse.status === 401) {
+    if (profileResponse.status === 401 || prizeResponse.status === 401 || codeResponse.status === 401) {
       router.push("/admin/login");
       return;
     }
 
+    const profileData = (await profileResponse.json()) as { ok: boolean; admin?: AdminProfile; message?: string };
     const prizeData = (await prizeResponse.json()) as { ok: boolean; prizes?: number[]; message?: string };
     const codeData = (await codeResponse.json()) as CodesResponse;
+
+    if (profileData.ok && profileData.admin) {
+      setProfile(profileData.admin);
+      setProfileName(profileData.admin.name);
+      setProfileUsername(profileData.admin.username);
+      setProfileImageUrl(profileData.admin.profileImageUrl || "");
+    }
 
     if (prizeData.ok && prizeData.prizes?.length) {
       setPrizeText(prizeData.prizes.join(", "));
@@ -71,6 +92,28 @@ export default function DashboardPage() {
     loadDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function saveProfile() {
+    const response = await fetch("/api/admin/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: profileName,
+        username: profileUsername,
+        profileImageUrl,
+        password: profilePassword
+      })
+    });
+    const data = (await response.json()) as { ok: boolean; message?: string; admin?: AdminProfile };
+
+    if (data.ok && data.admin) {
+      setProfile(data.admin);
+      setProfilePassword("");
+      setMessage("Admin profile updated.");
+    } else {
+      setMessage(data.message || "Could not update profile.");
+    }
+  }
 
   async function savePrizes() {
     const prizes = prizeText
@@ -139,13 +182,16 @@ export default function DashboardPage() {
             </Link>
             <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Owner Dashboard</h1>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="rounded-xl border border-white/25 px-4 py-2 font-bold text-white transition hover:bg-white/15"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <ProfileAvatar profile={profile} />
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-xl border border-white/25 px-4 py-2 font-bold text-white transition hover:bg-white/15"
+            >
+              Logout
+            </button>
+          </div>
         </header>
 
         <section className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -156,6 +202,50 @@ export default function DashboardPage() {
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="space-y-6">
+            <div className="glass rounded-2xl p-5">
+              <div className="flex items-center gap-4">
+                <ProfileAvatar profile={profile} large />
+                <div>
+                  <h2 className="text-xl font-black text-white">Admin Profile</h2>
+                  <p className="mt-1 text-sm text-white/70">Update owner name, username, image and password.</p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3">
+                <input
+                  value={profileName}
+                  onChange={(event) => setProfileName(event.target.value)}
+                  placeholder="Admin name"
+                  className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
+                />
+                <input
+                  value={profileUsername}
+                  onChange={(event) => setProfileUsername(event.target.value.toLowerCase())}
+                  placeholder="Username"
+                  className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
+                />
+                <input
+                  value={profileImageUrl}
+                  onChange={(event) => setProfileImageUrl(event.target.value)}
+                  placeholder="Profile picture URL"
+                  className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
+                />
+                <input
+                  type="password"
+                  value={profilePassword}
+                  onChange={(event) => setProfilePassword(event.target.value)}
+                  placeholder="New password, optional"
+                  className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={saveProfile}
+                className="mt-3 rounded-xl bg-white px-5 py-3 font-black text-eid-emerald shadow-glow"
+              >
+                Save Profile
+              </button>
+            </div>
+
             <div className="glass rounded-2xl p-5">
               <h2 className="text-xl font-black text-white">Prize Amounts</h2>
               <p className="mt-1 text-sm text-white/70">Comma-separated taka amounts used by the server.</p>
@@ -250,6 +340,33 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function ProfileAvatar({ profile, large = false }: { profile: AdminProfile | null; large?: boolean }) {
+  const size = large ? "h-16 w-16 text-xl" : "h-11 w-11 text-base";
+  const initials =
+    profile?.name
+      ?.split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "AD";
+
+  if (profile?.profileImageUrl) {
+    return (
+      <img
+        src={profile.profileImageUrl}
+        alt={profile.name}
+        className={`${size} rounded-full border-2 border-eid-gold object-cover`}
+      />
+    );
+  }
+
+  return (
+    <div className={`${size} flex items-center justify-center rounded-full border-2 border-eid-gold bg-white font-black text-eid-emerald`}>
+      {initials}
+    </div>
+  );
+}
+
 function CodesTable({ codes, onDelete }: { codes: CodeRow[]; onDelete: (code: string) => void }) {
   if (!codes.length) {
     return <p className="p-5 text-white/75">No codes yet. Generate a few to begin.</p>;
@@ -257,12 +374,12 @@ function CodesTable({ codes, onDelete }: { codes: CodeRow[]; onDelete: (code: st
 
   return (
     <div className="max-h-[620px] overflow-auto">
-      <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+      <table className="w-full min-w-[720px] border-collapse text-left text-sm">
         <thead className="sticky top-0 bg-eid-emerald text-eid-gold">
           <tr>
             <th className="px-4 py-3">Code</th>
             <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Prize</th>
+            <th className="px-4 py-3">Prize won</th>
             <th className="px-4 py-3">Used time</th>
             <th className="px-4 py-3">Action</th>
           </tr>
@@ -273,10 +390,16 @@ function CodesTable({ codes, onDelete }: { codes: CodeRow[]; onDelete: (code: st
               <td className="px-4 py-3 font-black text-white">{item.code}</td>
               <td className="px-4 py-3">
                 <span className={item.isUsed ? "text-eid-gold" : "text-emerald-100"}>
-                  {item.isUsed ? "Used" : "Unused"}
+                  {item.isUsed ? `Used${item.prizeWon ? ` - won ${item.prizeWon}৳` : ""}` : "Unused"}
                 </span>
               </td>
-              <td className="px-4 py-3">{item.prizeWon ? `${item.prizeWon}৳` : "-"}</td>
+              <td className="px-4 py-3">
+                {item.prizeWon ? (
+                  <span className="rounded-full bg-eid-gold px-3 py-1 font-black text-eid-ink">{item.prizeWon}৳</span>
+                ) : (
+                  "-"
+                )}
+              </td>
               <td className="px-4 py-3">{item.usedAt ? new Date(item.usedAt).toLocaleString() : "-"}</td>
               <td className="px-4 py-3">
                 <button

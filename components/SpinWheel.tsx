@@ -52,9 +52,9 @@ export default function SpinWheel({ code, prizes }: SpinWheelProps) {
     const prizeIndex = Math.max(0, prizes.findIndex((prize) => prize === data.prize));
     const segment = 360 / prizes.length;
     const centerOfPrize = prizeIndex * segment + segment / 2;
-    const pointerAngle = 270;
     const fullSpins = 6 * 360;
-    const nextRotation = fullSpins + pointerAngle - centerOfPrize;
+    const currentOffset = ((rotation % 360) + 360) % 360;
+    const nextRotation = fullSpins - centerOfPrize - currentOffset;
 
     setRotation((current) => current + nextRotation);
 

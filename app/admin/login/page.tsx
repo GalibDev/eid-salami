@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [username, setUsername] = useState("owner");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +19,7 @@ export default function LoginPage() {
     const response = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ username, password })
     });
     const data = (await response.json()) as { ok: boolean; message?: string };
 
@@ -39,10 +40,17 @@ export default function LoginPage() {
         </Link>
         <h1 className="mt-5 text-3xl font-black text-white">Owner Login</h1>
         <p className="mt-2 text-sm leading-6 text-white/72">
-          Use the password from your <span className="font-bold text-white">ADMIN_PASSWORD</span> environment value.
+          Login with your registered admin username and password.
         </p>
 
         <form onSubmit={login} className="mt-6 space-y-4">
+          <input
+            type="text"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder="Username"
+            className="w-full rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-semibold text-eid-ink outline-none ring-eid-gold/50 transition focus:ring-4"
+          />
           <input
             type="password"
             value={password}
@@ -60,6 +68,9 @@ export default function LoginPage() {
         </form>
 
         {message ? <p className="mt-4 text-sm font-semibold text-red-100">{message}</p> : null}
+        <Link href="/admin/register" className="mt-5 block text-center text-sm font-bold text-eid-gold">
+          Register or add an admin profile
+        </Link>
       </section>
     </main>
   );

@@ -1,7 +1,9 @@
 import mongoose, { Model, Schema } from "mongoose";
 
 export type AdminDocument = {
+  name: string;
   username: string;
+  profileImageUrl: string;
   passwordHash: string;
   createdAt: Date;
   updatedAt: Date;
@@ -9,7 +11,9 @@ export type AdminDocument = {
 
 const AdminSchema = new Schema<AdminDocument>(
   {
-    username: { type: String, required: true, unique: true },
+    name: { type: String, required: true, trim: true, default: "Owner" },
+    username: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    profileImageUrl: { type: String, default: "" },
     passwordHash: { type: String, required: true }
   },
   { timestamps: true }
