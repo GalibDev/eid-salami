@@ -35,18 +35,25 @@ type AdminProfile = {
 };
 
 type PrizeConfig = {
-  amount: number;
-  chancePercent: number;
+  amount: string;
+  chancePercent: string;
 };
 
 const defaultPrizeConfigs: PrizeConfig[] = [
-  { amount: 1, chancePercent: 16.67 },
-  { amount: 2, chancePercent: 16.67 },
-  { amount: 5, chancePercent: 16.67 },
-  { amount: 10, chancePercent: 16.67 },
-  { amount: 15, chancePercent: 16.66 },
-  { amount: 20, chancePercent: 16.66 }
+  { amount: "1", chancePercent: "16.67" },
+  { amount: "2", chancePercent: "16.67" },
+  { amount: "5", chancePercent: "16.67" },
+  { amount: "10", chancePercent: "16.67" },
+  { amount: "15", chancePercent: "16.66" },
+  { amount: "20", chancePercent: "16.66" }
 ];
+
+function toPrizeConfigState(prizes: Array<{ amount: number | string; chancePercent: number | string }>) {
+  return prizes.map((prize) => ({
+    amount: String(prize.amount),
+    chancePercent: String(prize.chancePercent)
+  }));
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -63,6 +70,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ totalCodes: 0, usedCodes: 0, unusedCodes: 0 });
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
   const [message, setMessage] = useState("");
+  const [prizeMessage, setPrizeMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
   const winners = useMemo(() => codes.filter((code) => code.isUsed), [codes]);
@@ -86,7 +94,7 @@ export default function DashboardPage() {
     const prizeData = (await prizeResponse.json()) as {
       ok: boolean;
       prizes?: number[];
-      prizeConfigs?: PrizeConfig[];
+      prizeConfigs?: Array<{ amount: number; chancePercent: number }>;
       message?: string;
     };
     const codeData = (await codeResponse.json()) as CodesResponse;
@@ -99,10 +107,10 @@ export default function DashboardPage() {
     }
 
     if (prizeData.ok && prizeData.prizeConfigs?.length) {
-      setPrizeConfigs(prizeData.prizeConfigs);
+      setPrizeConfigs(toPrizeConfigState(prizeData.prizeConfigs));
     } else if (prizeData.ok && prizeData.prizes?.length) {
       const chance = Math.round((100 / prizeData.prizes.length) * 100) / 100;
-      setPrizeConfigs(prizeData.prizes.map((amount) => ({ amount, chancePercent: chance })));
+      setPrizeConfigs(toPrizeConfigState(prizeData.prizes.map((amount) => ({ amount, chancePercent: chance }))));
     }
 
     if (codeData.ok) {
@@ -166,6 +174,7 @@ export default function DashboardPage() {
   }
 
   async function savePrizes() {
+    setPrizeMessage("Saving prize chances...");
     const prizes = prizeConfigs
       .map((prize) => ({
         amount: Math.round(Number(prize.amount)),
@@ -178,24 +187,28 @@ export default function DashboardPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prizes })
     });
-    const data = (await response.json()) as { ok: boolean; message?: string; prizeConfigs?: PrizeConfig[] };
+    const data = (await response.json()) as {
+      ok: boolean;
+      message?: string;
+      prizeConfigs?: Array<{ amount: number; chancePercent: number }>;
+    };
 
     if (data.ok) {
-      setPrizeConfigs(data.prizeConfigs || prizes);
-      setMessage("Prize chances saved.");
+      setPrizeConfigs(toPrizeConfigState(data.prizeConfigs || prizes));
+      setPrizeMessage("Prize chances saved.");
     } else {
-      setMessage(data.message || "Could not save prizes.");
+      setPrizeMessage(data.message || "Could not save prizes.");
     }
   }
 
-  function updatePrizeConfig(index: number, field: keyof PrizeConfig, value: number) {
+  function updatePrizeConfig(index: number, field: keyof PrizeConfig, value: string) {
     setPrizeConfigs((current) =>
       current.map((prize, prizeIndex) => (prizeIndex === index ? { ...prize, [field]: value } : prize))
     );
   }
 
   function addPrizeConfig() {
-    setPrizeConfigs((current) => [...current, { amount: 25, chancePercent: 0 }]);
+    setPrizeConfigs((current) => [...current, { amount: "25", chancePercent: "0" }]);
   }
 
   function removePrizeConfig(index: number) {
@@ -330,20 +343,31 @@ export default function DashboardPage() {
                 {prizeConfigs.map((prize, index) => (
                   <div key={`${prize.amount}-${index}`} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       min={1}
                       value={prize.amount}
-                      onChange={(event) => updatePrizeConfig(index, "amount", Number(event.target.value))}
+                      onChange={(event) => updatePrizeConfig(index, "amount", event.target.value.replace(/[^\d]/g, ""))}
                       placeholder="Prize amount"
                       className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
                     />
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       min={0}
                       max={100}
                       step={0.01}
                       value={prize.chancePercent}
-                      onChange={(event) => updatePrizeConfig(index, "chancePercent", Number(event.target.value))}
+                      onChange={(event) =>
+                        updatePrizeConfig(
+                          index,
+                          "chancePercent",
+                          event.target.value
+                            .replace(/[^\d.]/g, "")
+                            .replace(/(\..*)\./g, "$1")
+                            .replace(/^0+(\d)/, "$1")
+                        )
+                      }
                       placeholder="Chance %"
                       className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
                     />
@@ -373,6 +397,7 @@ export default function DashboardPage() {
                   Save Chances
                 </button>
               </div>
+              {prizeMessage ? <p className="mt-3 text-sm font-bold text-eid-gold">{prizeMessage}</p> : null}
             </div>
 
             <div className="glass rounded-2xl p-5">
