@@ -29,6 +29,26 @@ Open:
 - Public site: `http://localhost:3000`
 - Owner login: `http://localhost:3000/admin/login`
 
+## Deploy on Vercel
+
+Add these variables in **Vercel Project Settings > Environment Variables** before deploying:
+
+```env
+MONGODB_URI=your-mongodb-atlas-connection-string
+JWT_SECRET=use-a-long-random-secret
+ADMIN_PASSWORD=your-owner-setup-password
+```
+
+For Vercel, use a MongoDB Atlas URI, not `mongodb://127.0.0.1:27017/...`.
+
+Example:
+
+```env
+MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@cluster0.xxxxx.mongodb.net/eid-salami?retryWrites=true&w=majority
+```
+
+If your variable is already named `MONGO_URI` or `DATABASE_URL`, the app also supports those aliases.
+
 ## Folder Structure
 
 - `app/page.tsx` - Eid landing page, redeem code input, and wheel section.

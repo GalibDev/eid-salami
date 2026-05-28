@@ -19,9 +19,11 @@ if (!global.mongooseCache) {
 export async function connectDB() {
   if (cached.conn) return cached.conn;
 
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.DATABASE_URL;
   if (!uri) {
-    throw new Error("MONGODB_URI is missing. Add it to .env.local.");
+    throw new Error(
+      "MongoDB connection string is missing. Add MONGODB_URI in Vercel Project Settings > Environment Variables."
+    );
   }
 
   cached.promise =
