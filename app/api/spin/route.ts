@@ -1,7 +1,20 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getActivePrizeAmounts } from "@/lib/prizes";
 import Code from "@/models/Code";
+
+async function pickBalancedPrize(prizes: number[]) {
+  const winCounts = await Code.aggregate<{ _id: number; count: number }>([
+    { $match: { isUsed: true, prizeWon: { $in: prizes } } },
+    { $group: { _id: "$prizeWon", count: { $sum: 1 } } }
+  ]);
+  const countMap = new Map(winCounts.map((item) => [item._id, item.count]));
+  const lowestCount = Math.min(...prizes.map((prize) => countMap.get(prize) || 0));
+  const leastWonPrizes = prizes.filter((prize) => (countMap.get(prize) || 0) === lowestCount);
+
+  return leastWonPrizes[crypto.randomInt(leastWonPrizes.length)];
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const prizes = await getActivePrizeAmounts();
-    const prize = prizes[Math.floor(Math.random() * prizes.length)];
+    const prize = await pickBalancedPrize(prizes);
 
     const updatedCode = await Code.findOneAndUpdate(
       { code: cleanCode, isUsed: false },
