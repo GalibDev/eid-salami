@@ -1,19 +1,27 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getActivePrizeAmounts } from "@/lib/prizes";
+import { getActivePrizeConfigs } from "@/lib/prizes";
 import Code from "@/models/Code";
 
-async function pickBalancedPrize(prizes: number[]) {
-  const winCounts = await Code.aggregate<{ _id: number; count: number }>([
-    { $match: { isUsed: true, prizeWon: { $in: prizes } } },
-    { $group: { _id: "$prizeWon", count: { $sum: 1 } } }
-  ]);
-  const countMap = new Map(winCounts.map((item) => [item._id, item.count]));
-  const lowestCount = Math.min(...prizes.map((prize) => countMap.get(prize) || 0));
-  const leastWonPrizes = prizes.filter((prize) => (countMap.get(prize) || 0) === lowestCount);
+function pickWeightedPrize(prizes: Array<{ amount: number; chancePercent: number }>) {
+  const activePrizes = prizes.filter((prize) => prize.chancePercent > 0);
+  const weightedPrizes = activePrizes.length ? activePrizes : prizes;
+  const totalWeight = weightedPrizes.reduce((sum, prize) => sum + Math.max(0, prize.chancePercent), 0);
 
-  return leastWonPrizes[crypto.randomInt(leastWonPrizes.length)];
+  if (totalWeight <= 0) {
+    return weightedPrizes[crypto.randomInt(weightedPrizes.length)].amount;
+  }
+
+  const randomPoint = crypto.randomInt(Math.round(totalWeight * 100)) / 100;
+  let runningTotal = 0;
+
+  for (const prize of weightedPrizes) {
+    runningTotal += prize.chancePercent;
+    if (randomPoint < runningTotal) return prize.amount;
+  }
+
+  return weightedPrizes[weightedPrizes.length - 1].amount;
 }
 
 export async function POST(request: NextRequest) {
@@ -27,8 +35,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: "Code is required." }, { status: 400 });
     }
 
-    const prizes = await getActivePrizeAmounts();
-    const prize = await pickBalancedPrize(prizes);
+    const prizes = await getActivePrizeConfigs();
+    const prize = pickWeightedPrize(prizes);
 
     const updatedCode = await Code.findOneAndUpdate(
       { code: cleanCode, isUsed: false },

@@ -34,6 +34,20 @@ type AdminProfile = {
   profileImageUrl: string;
 };
 
+type PrizeConfig = {
+  amount: number;
+  chancePercent: number;
+};
+
+const defaultPrizeConfigs: PrizeConfig[] = [
+  { amount: 1, chancePercent: 16.67 },
+  { amount: 2, chancePercent: 16.67 },
+  { amount: 5, chancePercent: 16.67 },
+  { amount: 10, chancePercent: 16.67 },
+  { amount: 15, chancePercent: 16.66 },
+  { amount: 20, chancePercent: 16.66 }
+];
+
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<AdminProfile | null>(null);
@@ -43,7 +57,7 @@ export default function DashboardPage() {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profilePreviewUrl, setProfilePreviewUrl] = useState("");
   const [profilePassword, setProfilePassword] = useState("");
-  const [prizeText, setPrizeText] = useState("1, 2, 5, 10, 15, 20");
+  const [prizeConfigs, setPrizeConfigs] = useState<PrizeConfig[]>(defaultPrizeConfigs);
   const [count, setCount] = useState(10);
   const [codes, setCodes] = useState<CodeRow[]>([]);
   const [stats, setStats] = useState({ totalCodes: 0, usedCodes: 0, unusedCodes: 0 });
@@ -69,7 +83,12 @@ export default function DashboardPage() {
     }
 
     const profileData = (await profileResponse.json()) as { ok: boolean; admin?: AdminProfile; message?: string };
-    const prizeData = (await prizeResponse.json()) as { ok: boolean; prizes?: number[]; message?: string };
+    const prizeData = (await prizeResponse.json()) as {
+      ok: boolean;
+      prizes?: number[];
+      prizeConfigs?: PrizeConfig[];
+      message?: string;
+    };
     const codeData = (await codeResponse.json()) as CodesResponse;
 
     if (profileData.ok && profileData.admin) {
@@ -79,8 +98,11 @@ export default function DashboardPage() {
       setProfileImageUrl(profileData.admin.profileImageUrl || "");
     }
 
-    if (prizeData.ok && prizeData.prizes?.length) {
-      setPrizeText(prizeData.prizes.join(", "));
+    if (prizeData.ok && prizeData.prizeConfigs?.length) {
+      setPrizeConfigs(prizeData.prizeConfigs);
+    } else if (prizeData.ok && prizeData.prizes?.length) {
+      const chance = Math.round((100 / prizeData.prizes.length) * 100) / 100;
+      setPrizeConfigs(prizeData.prizes.map((amount) => ({ amount, chancePercent: chance })));
     }
 
     if (codeData.ok) {
@@ -144,24 +166,40 @@ export default function DashboardPage() {
   }
 
   async function savePrizes() {
-    const prizes = prizeText
-      .split(",")
-      .map((item) => Number(item.trim()))
-      .filter(Boolean);
+    const prizes = prizeConfigs
+      .map((prize) => ({
+        amount: Math.round(Number(prize.amount)),
+        chancePercent: Math.max(0, Math.round(Number(prize.chancePercent) * 100) / 100)
+      }))
+      .filter((prize) => prize.amount > 0);
 
     const response = await fetch("/api/admin/prizes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prizes })
     });
-    const data = (await response.json()) as { ok: boolean; message?: string; prizes?: number[] };
+    const data = (await response.json()) as { ok: boolean; message?: string; prizeConfigs?: PrizeConfig[] };
 
     if (data.ok) {
-      setPrizeText((data.prizes || prizes).join(", "));
-      setMessage("Prize amounts saved.");
+      setPrizeConfigs(data.prizeConfigs || prizes);
+      setMessage("Prize chances saved.");
     } else {
       setMessage(data.message || "Could not save prizes.");
     }
+  }
+
+  function updatePrizeConfig(index: number, field: keyof PrizeConfig, value: number) {
+    setPrizeConfigs((current) =>
+      current.map((prize, prizeIndex) => (prizeIndex === index ? { ...prize, [field]: value } : prize))
+    );
+  }
+
+  function addPrizeConfig() {
+    setPrizeConfigs((current) => [...current, { amount: 25, chancePercent: 0 }]);
+  }
+
+  function removePrizeConfig(index: number) {
+    setPrizeConfigs((current) => current.filter((_, prizeIndex) => prizeIndex !== index));
   }
 
   async function generateCodes() {
@@ -279,20 +317,62 @@ export default function DashboardPage() {
             </div>
 
             <div className="glass rounded-2xl p-5">
-              <h2 className="text-xl font-black text-white">Prize Amounts</h2>
-              <p className="mt-1 text-sm text-white/70">Comma-separated taka amounts used by the server.</p>
-              <textarea
-                value={prizeText}
-                onChange={(event) => setPrizeText(event.target.value)}
-                className="mt-4 min-h-24 w-full rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
-              />
-              <button
-                type="button"
-                onClick={savePrizes}
-                className="mt-3 rounded-xl bg-eid-gold px-5 py-3 font-black text-eid-ink shadow-glow"
-              >
-                Save Prizes
-              </button>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black text-white">Prize Chances</h2>
+                  <p className="mt-1 text-sm text-white/70">Set how often each prize should win. Total must be 100%.</p>
+                </div>
+                <span className="rounded-full bg-white/15 px-3 py-2 text-sm font-black text-eid-gold">
+                  Total {Math.round(prizeConfigs.reduce((sum, prize) => sum + Number(prize.chancePercent || 0), 0) * 100) / 100}%
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {prizeConfigs.map((prize, index) => (
+                  <div key={`${prize.amount}-${index}`} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                    <input
+                      type="number"
+                      min={1}
+                      value={prize.amount}
+                      onChange={(event) => updatePrizeConfig(index, "amount", Number(event.target.value))}
+                      placeholder="Prize amount"
+                      className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      value={prize.chancePercent}
+                      onChange={(event) => updatePrizeConfig(index, "chancePercent", Number(event.target.value))}
+                      placeholder="Chance %"
+                      className="rounded-xl border border-white/20 bg-white/95 px-4 py-3 font-bold text-eid-ink outline-none ring-eid-gold/50 focus:ring-4"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePrizeConfig(index)}
+                      className="rounded-xl bg-red-500/25 px-4 py-3 font-black text-red-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={addPrizeConfig}
+                  className="rounded-xl bg-white px-5 py-3 font-black text-eid-emerald shadow-glow"
+                >
+                  Add Prize
+                </button>
+                <button
+                  type="button"
+                  onClick={savePrizes}
+                  className="rounded-xl bg-eid-gold px-5 py-3 font-black text-eid-ink shadow-glow"
+                >
+                  Save Chances
+                </button>
+              </div>
             </div>
 
             <div className="glass rounded-2xl p-5">

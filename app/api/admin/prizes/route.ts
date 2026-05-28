@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
-import { normalizePrizeAmounts } from "@/lib/prizes";
+import { getActivePrizeConfigs, normalizePrizeConfigs, sumPrizeChance } from "@/lib/prizes";
 import Prize from "@/models/Prize";
 
 export async function GET() {
@@ -10,8 +10,13 @@ export async function GET() {
   }
 
   await connectDB();
-  const prizes = await Prize.find({ isActive: true }).sort({ amount: 1 }).lean();
-  return NextResponse.json({ ok: true, prizes: prizes.map((prize) => prize.amount) });
+  const prizeConfigs = await getActivePrizeConfigs();
+
+  return NextResponse.json({
+    ok: true,
+    prizes: prizeConfigs.map((prize) => prize.amount),
+    prizeConfigs
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -21,18 +26,30 @@ export async function POST(request: NextRequest) {
 
   await connectDB();
   const body = (await request.json()) as { prizes?: unknown };
-  const amounts = normalizePrizeAmounts(body.prizes);
+  const prizeConfigs = normalizePrizeConfigs(body.prizes);
 
-  if (!amounts.length) {
+  if (!prizeConfigs.length) {
     return NextResponse.json({ ok: false, message: "Add at least one valid prize amount." }, { status: 400 });
+  }
+
+  const totalChance = sumPrizeChance(prizeConfigs);
+  if (totalChance !== 100) {
+    return NextResponse.json(
+      { ok: false, message: `Prize chances must total 100%. Current total is ${totalChance}%.` },
+      { status: 400 }
+    );
   }
 
   await Prize.updateMany({}, { $set: { isActive: false } });
   await Promise.all(
-    amounts.map((amount) =>
-      Prize.findOneAndUpdate({ amount }, { $set: { amount, isActive: true } }, { upsert: true, new: true })
+    prizeConfigs.map((prize) =>
+      Prize.findOneAndUpdate(
+        { amount: prize.amount },
+        { $set: { amount: prize.amount, chancePercent: prize.chancePercent, isActive: true } },
+        { upsert: true, new: true }
+      )
     )
   );
 
-  return NextResponse.json({ ok: true, prizes: amounts });
+  return NextResponse.json({ ok: true, prizes: prizeConfigs.map((prize) => prize.amount), prizeConfigs });
 }
