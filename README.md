@@ -79,3 +79,5 @@ https://your-vercel-domain.vercel.app/api/auth/callback/google
 - `/api/spin` marks the code as used in the same database operation that saves the prize.
 - Admin API routes require the HTTP-only JWT cookie created by `/api/admin/login`.
 - Frontend never sends the selected prize to the server.
+
+updated on june 2026
