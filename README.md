@@ -6,7 +6,7 @@ A full-stack Next.js 14 App Router website where an owner generates one-time red
 
 ```bash
 npm install
-```
+
 
 ## 2. Create `.env.local`
 
